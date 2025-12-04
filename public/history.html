@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lucky Numbers - Previous Results</title>
+  <meta name="description" content="Browse previous Lucky Numbers results. Search by date and view historical data.">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <h1>📊 Previous Results</h1>
+        <p>Historical Lucky Numbers Results</p>
+        <nav class="nav">
+          <a href="/" class="nav-link">Today's Result</a>
+          <a href="/history.html" class="nav-link active">Previous Results</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container">
+    <!-- Search Form -->
+    <div class="card">
+      <h2 style="margin-bottom: 20px; color: var(--primary-color);">Search Results</h2>
+      <div class="search-form">
+        <input type="date" id="searchDate" placeholder="Select Date">
+        <button class="btn btn-primary" onclick="searchByDate()">Search</button>
+        <button class="btn btn-secondary" onclick="loadResults()">Show All</button>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="loading">
+      <div class="spinner"></div>
+      <p>Loading results...</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="errorState" class="error" style="display: none;">
+      <p id="errorMessage">Unable to load results. Please try again.</p>
+    </div>
+
+    <!-- Results Table -->
+    <div id="resultsContainer" style="display: none;">
+      <div class="card">
+        <h2 style="margin-bottom: 20px; color: var(--primary-color);">Results History</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Day</th>
+                <th>F/R</th>
+                <th>S/R</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="resultsTable">
+              <!-- Results will be populated here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination" id="pagination">
+        <!-- Pagination buttons will be added here -->
+      </div>
+    </div>
+
+    <!-- No Results -->
+    <div id="noResults" class="card" style="display: none; text-align: center; padding: 40px;">
+      <p style="color: var(--text-secondary); font-size: 1.1rem;">No results found for the selected criteria.</p>
+      <button class="btn btn-primary" onclick="loadResults()" style="margin-top: 20px;">View All Results</button>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>&copy; 2025 Lucky Numbers. All rights reserved.</p>
+    <p style="margin-top: 5px; font-size: 0.9rem;">For informational purposes only.</p>
+  </footer>
+
+  <script src="/js/history.js"></script>
+</body>
+</html>

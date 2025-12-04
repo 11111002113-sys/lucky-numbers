@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lucky Numbers - Today's Results</title>
+  <meta name="description" content="Get today's Lucky Numbers results with real-time updates. First Round and Second Round results updated instantly.">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <h1>🎯 Lucky Numbers</h1>
+        <p>Official Daily Results - Real-time Updates</p>
+        <nav class="nav">
+          <a href="/" class="nav-link active">Today's Result</a>
+          <a href="/history.html" class="nav-link">Previous Results</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container">
+    <!-- Date Display -->
+    <div class="card date-display" id="dateDisplay">
+      <div class="date">Loading...</div>
+      <div class="day">Please wait</div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="loading">
+      <div class="spinner"></div>
+      <p>Loading today's results...</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="errorState" class="error" style="display: none;">
+      <p>Unable to load results. Please refresh the page.</p>
+    </div>
+
+    <!-- Results Container -->
+    <div id="resultsContainer" style="display: none;">
+      <div class="card">
+        <h2 style="color: var(--primary-color); margin-bottom: 15px; font-size: 1.1rem; text-align: center;">Today's Results</h2>
+        <div class="results-table-container">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Round</th>
+                <th>Time</th>
+                <th>Result</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>First Round (F/R)</strong></td>
+                <td id="frTime">3:15 PM</td>
+                <td><span class="result-number-table" id="frResult">--</span></td>
+                <td><span class="status-badge" id="frStatus">Pending</span></td>
+              </tr>
+              <tr>
+                <td><strong>Second Round (S/R)</strong></td>
+                <td id="srTime">4:15 PM</td>
+                <td><span class="result-number-table" id="srResult">--</span></td>
+                <td><span class="status-badge" id="srStatus">Pending</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Last Updated -->
+      <div class="last-updated">
+        <p>🕒 Last Updated: <strong id="lastUpdated">-</strong></p>
+        <p style="margin-top: 5px; font-size: 0.85rem;">
+          <span id="connectionStatus" style="color: #16a34a;">● Connected</span>
+        </p>
+      </div>
+
+      <!-- Information Card -->
+      <div class="card" style="margin-top: 15px; text-align: center; padding: 15px;">
+        <h4 style="color: var(--primary-color); margin-bottom: 10px; font-size: 0.95rem;">Shooting Schedule</h4>
+        <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0;">
+          First Round: <strong id="displayFrTime">3:15 PM</strong> &nbsp;|&nbsp; Second Round: <strong id="displaySrTime">4:15 PM</strong>
+        </p>
+        <p style="margin-top: 8px; font-size: 0.8rem; color: var(--text-secondary);">
+          Results are updated in real-time as soon as they are declared.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>&copy; 2025 Lucky Numbers. All rights reserved.</p>
+    <p style="margin-top: 5px; font-size: 0.9rem;">For informational purposes only.</p>
+  </footer>
+
+  <!-- Socket.io Client -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
