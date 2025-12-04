@@ -41,6 +41,11 @@ app.use('/api/', apiLimiter);
 // Serve static files (frontend)
 app.use(express.static('public'));
 
+// Health check endpoint (for Render)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Routes
 app.use('/api/results', resultsRoutes);
 app.use('/api/admin', adminRoutes);
