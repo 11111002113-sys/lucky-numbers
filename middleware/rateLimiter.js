@@ -1,12 +1,25 @@
 const rateLimit = require('express-rate-limit');
 
-// Rate limiter for login attempts
+// Rate limiter for login attempts (STRICT)
 const loginLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 5, // 5 requests per window
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 3, // Only 3 attempts per 15 minutes
   message: {
     success: false,
-    message: 'Too many login attempts, please try again after 10 minutes'
+    message: 'Too many login attempts. Your IP has been temporarily blocked. Please try again after 15 minutes.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false, // Count even successful requests
+});
+
+// Rate limiter for admin routes (PROTECTED)
+const adminLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 50, // 50 requests per window for admin operations
+  message: {
+    success: false,
+    message: 'Too many admin requests, please slow down'
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -24,4 +37,4 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-module.exports = { loginLimiter, apiLimiter };
+module.exports = { loginLimiter, apiLimiter, adminLimiter };

@@ -47,6 +47,34 @@ const io = new Server(httpServer, {
 // Make io accessible to routes
 app.set('io', io);
 
+// Security Headers
+app.use((req, res, next) => {
+  // Remove server identification
+  res.removeHeader('X-Powered-By');
+  
+  // Security headers
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  
+  // Content Security Policy
+  res.setHeader('Content-Security-Policy', 
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline'; " +
+    "style-src 'self' 'unsafe-inline'; " +
+    "img-src 'self' data:; " +
+    "connect-src 'self' ws: wss:; " +
+    "font-src 'self'; " +
+    "object-src 'none'; " +
+    "base-uri 'self'; " +
+    "form-action 'self'"
+  );
+  
+  next();
+});
+
 // Middleware
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*'
@@ -68,6 +96,23 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/api/results', resultsRoutes);
 app.use('/api/admin', adminRoutes);
+
+// Honeypot: Catch common admin path scanning
+const commonAdminPaths = [
+  '/admin', '/administrator', '/wp-admin', '/phpmyadmin',
+  '/cpanel', '/webmail', '/admin.php', '/login.php',
+  '/administrator.php', '/admin/login', '/backend'
+];
+
+commonAdminPaths.forEach(path => {
+  app.all(path, (req, res) => {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.ip;
+    console.warn(`🚨 SECURITY ALERT: Attempted unauthorized admin access from IP ${ip} to ${req.path}`);
+    
+    // Return generic 404 to avoid revealing system structure
+    res.status(404).send('Not Found');
+  });
+});
 
 // Root route
 app.get('/', (req, res) => {

@@ -3,20 +3,34 @@ const router = express.Router();
 const Admin = require('../models/Admin');
 const Result = require('../models/Result');
 const { protect } = require('../middleware/auth');
-const { loginLimiter } = require('../middleware/rateLimiter');
+const { loginLimiter, adminLimiter } = require('../middleware/rateLimiter');
 const { generateToken, isValidResult, isValidTime } = require('../utils/helpers');
 const speakeasy = require('speakeasy');
 const QRCode = require('qrcode');
+const { 
+  checkBlockedIP, 
+  trackFailedLogin, 
+  resetFailedAttempts, 
+  getClientIP, 
+  logAdminAccess 
+} = require('../middleware/security');
+
+// Apply security middleware to all admin routes
+router.use(checkBlockedIP);
+router.use(logAdminAccess);
 
 // @route   POST /api/admin/login
 // @desc    Admin login
 // @access  Public
 router.post('/login', loginLimiter, async (req, res) => {
+  const clientIP = getClientIP(req);
+  
   try {
     const { email, password, token } = req.body;
 
     // Validate input
     if (!email || !password) {
+      trackFailedLogin(clientIP);
       return res.status(400).json({
         success: false,
         message: 'Please provide email and password'
@@ -27,6 +41,8 @@ router.post('/login', loginLimiter, async (req, res) => {
     const admin = await Admin.findOne({ email }).select('+password +twoFactorSecret');
 
     if (!admin) {
+      trackFailedLogin(clientIP);
+      console.warn(`❌ Failed login attempt from IP ${clientIP}: Invalid email`);
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
@@ -37,6 +53,8 @@ router.post('/login', loginLimiter, async (req, res) => {
     const isMatch = await admin.comparePassword(password);
 
     if (!isMatch) {
+      trackFailedLogin(clientIP);
+      console.warn(`❌ Failed login attempt from IP ${clientIP}: Invalid password for ${email}`);
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
@@ -62,12 +80,18 @@ router.post('/login', loginLimiter, async (req, res) => {
       });
 
       if (!verified) {
+        trackFailedLogin(clientIP);
+        console.warn(`❌ Failed 2FA verification from IP ${clientIP} for ${email}`);
         return res.status(401).json({
           success: false,
           message: 'Invalid 2FA code'
         });
       }
     }
+
+    // Successful login - reset failed attempts
+    resetFailedAttempts(clientIP);
+    console.log(`✅ Successful admin login from IP ${clientIP}: ${email}`);
 
     // Generate token
     const authToken = generateToken(admin._id);
@@ -85,6 +109,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     });
   } catch (error) {
     console.error(error);
+    trackFailedLogin(clientIP);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -95,7 +120,7 @@ router.post('/login', loginLimiter, async (req, res) => {
 // @route   POST /api/admin/2fa/setup
 // @desc    Setup 2FA for admin
 // @access  Private (Admin)
-router.post('/2fa/setup', protect, async (req, res) => {
+router.post('/2fa/setup', protect, adminLimiter, async (req, res) => {
   try {
     const admin = await Admin.findById(req.admin.id).select('+twoFactorSecret');
 
