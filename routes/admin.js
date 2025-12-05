@@ -589,10 +589,13 @@ router.get('/me', protect, async (req, res) => {
       });
     }
 
+    console.log(`📋 Admin info requested: ${admin.email} (ID: ${admin._id})`);
+
     res.json({
       success: true,
       email: admin.email,
-      twoFactorEnabled: admin.twoFactorEnabled || false
+      twoFactorEnabled: admin.twoFactorEnabled || false,
+      _id: admin._id
     });
   } catch (error) {
     console.error('Error fetching admin info:', error);

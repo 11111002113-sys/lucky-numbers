@@ -83,16 +83,16 @@ async function changeEmail(e) {
       throw new Error(data.message || 'Failed to change email');
     }
 
-    showSuccess('Email updated successfully! Please log in again with your new email.');
+    showSuccess(`Email updated successfully to ${data.email}! The change has been saved to the database. Please log in again with your new email.`);
     document.getElementById('emailForm').reset();
     
-    // Update displayed email
-    document.getElementById('currentEmail').textContent = newEmail;
+    // Update displayed email to show confirmation
+    document.getElementById('currentEmail').textContent = data.email;
     
     // Optionally logout after email change
     setTimeout(() => {
       logout();
-    }, 2000);
+    }, 3000);
 
   } catch (error) {
     console.error('Error changing email:', error);

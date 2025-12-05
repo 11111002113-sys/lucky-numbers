@@ -67,6 +67,16 @@ adminSchema.pre('save', async function(next) {
   next();
 });
 
+// Log after saving to confirm database update
+adminSchema.post('save', function(doc) {
+  if (this.isModified('email')) {
+    console.log(`📧 Database updated: Admin email changed to ${doc.email}`);
+  }
+  if (this.isModified('password')) {
+    console.log(`🔐 Database updated: Admin password changed for ${doc.email}`);
+  }
+});
+
 // Method to compare password
 adminSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
