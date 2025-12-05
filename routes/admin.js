@@ -661,13 +661,14 @@ router.post('/change-email', protect, async (req, res) => {
 
     // Update email
     admin.email = newEmail;
-    await admin.save();
+    await admin.save({ validateBeforeSave: true });
 
-    console.log(`✅ Email changed successfully from IP ${clientIP} for admin ${admin._id}`);
+    console.log(`✅ Email changed successfully from IP ${clientIP} for admin ${admin._id}. New email: ${newEmail}`);
 
     res.json({
       success: true,
-      message: 'Email updated successfully'
+      message: 'Email updated successfully',
+      email: admin.email
     });
   } catch (error) {
     console.error('Error changing email:', error);
@@ -726,7 +727,7 @@ router.post('/change-password', protect, async (req, res) => {
 
     // Update password
     admin.password = newPassword;
-    await admin.save();
+    await admin.save({ validateBeforeSave: true });
 
     console.log(`✅ Password changed successfully from IP ${clientIP} for admin ${admin._id}`);
 
@@ -831,16 +832,21 @@ router.post('/forgot-password', loginLimiter, async (req, res) => {
   } catch (error) {
     console.error('Error in forgot password:', error);
     
-    // Clear reset token on error
-    if (error.admin) {
-      error.admin.resetPasswordToken = undefined;
-      error.admin.resetPasswordExpire = undefined;
-      await error.admin.save();
+    // Clear reset token on error if admin was found
+    try {
+      const admin = await Admin.findOne({ email: req.body.email });
+      if (admin) {
+        admin.resetPasswordToken = undefined;
+        admin.resetPasswordExpire = undefined;
+        await admin.save({ validateBeforeSave: false });
+      }
+    } catch (clearError) {
+      console.error('Error clearing reset token:', clearError);
     }
     
     res.status(500).json({
       success: false,
-      message: 'Email could not be sent. Please try again later.'
+      message: error.message || 'Email could not be sent. Please configure email settings or try again later.'
     });
   }
 });
