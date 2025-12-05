@@ -19,6 +19,53 @@ const lastUpdated = document.getElementById('lastUpdated');
 const connectionStatus = document.getElementById('connectionStatus');
 const displayFrTime = document.getElementById('displayFrTime');
 const displaySrTime = document.getElementById('displaySrTime');
+const frCountdown = document.getElementById('frCountdown');
+const srCountdown = document.getElementById('srCountdown');
+
+// Countdown timers
+let countdownInterval;
+
+function updateCountdown(targetTime, element, isCompleted) {
+  if (isCompleted) {
+    element.textContent = 'Declared ✓';
+    element.style.color = '#10b981';
+    return;
+  }
+
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+  const targetDateTime = new Date(`${today}T${targetTime}`);
+  
+  const diff = targetDateTime - now;
+  
+  if (diff <= 0) {
+    element.textContent = 'Time Passed';
+    element.style.color = '#fbbf24';
+    return;
+  }
+  
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+  
+  element.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  element.style.color = 'white';
+}
+
+function startCountdown(frTime, srTime, frDeclared, srDeclared) {
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+  }
+  
+  countdownInterval = setInterval(() => {
+    updateCountdown(frTime, frCountdown, frDeclared);
+    updateCountdown(srTime, srCountdown, srDeclared);
+  }, 1000);
+  
+  // Initial update
+  updateCountdown(frTime, frCountdown, frDeclared);
+  updateCountdown(srTime, srCountdown, srDeclared);
+}
 
 // Format date
 function formatDate(dateString) {
@@ -67,6 +114,11 @@ function updateUI(data) {
   srTime.textContent = formatTime(data.sr_time);
   displayFrTime.textContent = formatTime(data.fr_time);
   displaySrTime.textContent = formatTime(data.sr_time);
+
+  // Start countdown timers
+  const frDeclared = (data.fr_result !== null && data.fr_result !== undefined);
+  const srDeclared = (data.sr_result !== null && data.sr_result !== undefined);
+  startCountdown(data.fr_time, data.sr_time, frDeclared, srDeclared);
 
   // Update First Round result
   if (data.fr_result !== null && data.fr_result !== undefined) {

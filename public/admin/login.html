@@ -59,6 +59,21 @@
             >
           </div>
 
+          <div class="form-group" id="tokenGroup" style="display: none;">
+            <label for="token">2FA Code</label>
+            <input 
+              type="text" 
+              id="token" 
+              name="token" 
+              placeholder="Enter 6-digit code"
+              pattern="[0-9]{6}"
+              maxlength="6"
+            >
+            <small style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 5px; display: block;">
+              Enter the 6-digit code from your authenticator app
+            </small>
+          </div>
+
           <button type="submit" class="btn btn-primary btn-block" id="loginBtn">
             <span id="loginBtnText">Login</span>
             <span id="loginBtnSpinner" class="btn-spinner" style="display: none;"></span>

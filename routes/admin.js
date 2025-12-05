@@ -5,13 +5,15 @@ const Result = require('../models/Result');
 const { protect } = require('../middleware/auth');
 const { loginLimiter } = require('../middleware/rateLimiter');
 const { generateToken, isValidResult, isValidTime } = require('../utils/helpers');
+const speakeasy = require('speakeasy');
+const QRCode = require('qrcode');
 
 // @route   POST /api/admin/login
 // @desc    Admin login
 // @access  Public
 router.post('/login', loginLimiter, async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, token } = req.body;
 
     // Validate input
     if (!email || !password) {
@@ -22,7 +24,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     }
 
     // Check if admin exists
-    const admin = await Admin.findOne({ email }).select('+password');
+    const admin = await Admin.findOne({ email }).select('+password +twoFactorSecret');
 
     if (!admin) {
       return res.status(401).json({
@@ -41,18 +43,183 @@ router.post('/login', loginLimiter, async (req, res) => {
       });
     }
 
+    // Check if 2FA is enabled
+    if (admin.twoFactorEnabled) {
+      if (!token) {
+        return res.status(200).json({
+          success: false,
+          requires2FA: true,
+          message: 'Please enter your 6-digit 2FA code'
+        });
+      }
+
+      // Verify 2FA token
+      const verified = speakeasy.totp.verify({
+        secret: admin.twoFactorSecret,
+        encoding: 'base32',
+        token: token,
+        window: 2
+      });
+
+      if (!verified) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid 2FA code'
+        });
+      }
+    }
+
     // Generate token
-    const token = generateToken(admin._id);
+    const authToken = generateToken(admin._id);
 
     res.json({
       success: true,
-      token,
+      token: authToken,
       admin: {
         id: admin._id,
         name: admin.name,
         email: admin.email,
-        role: admin.role
+        role: admin.role,
+        twoFactorEnabled: admin.twoFactorEnabled
       }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// @route   POST /api/admin/2fa/setup
+// @desc    Setup 2FA for admin
+// @access  Private (Admin)
+router.post('/2fa/setup', protect, async (req, res) => {
+  try {
+    const admin = await Admin.findById(req.admin.id).select('+twoFactorSecret');
+
+    // Generate secret
+    const secret = speakeasy.generateSecret({
+      name: `Lucky Numbers (${admin.email})`
+    });
+
+    // Save secret to admin
+    admin.twoFactorSecret = secret.base32;
+    await admin.save();
+
+    // Generate QR code
+    const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url);
+
+    res.json({
+      success: true,
+      secret: secret.base32,
+      qrCode: qrCodeUrl,
+      message: 'Scan this QR code with Google Authenticator or Authy'
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// @route   POST /api/admin/2fa/enable
+// @desc    Enable 2FA after verifying token
+// @access  Private (Admin)
+router.post('/2fa/enable', protect, async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide 2FA token'
+      });
+    }
+
+    const admin = await Admin.findById(req.admin.id).select('+twoFactorSecret');
+
+    if (!admin.twoFactorSecret) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please setup 2FA first'
+      });
+    }
+
+    // Verify token
+    const verified = speakeasy.totp.verify({
+      secret: admin.twoFactorSecret,
+      encoding: 'base32',
+      token: token,
+      window: 2
+    });
+
+    if (!verified) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid 2FA code'
+      });
+    }
+
+    // Enable 2FA
+    admin.twoFactorEnabled = true;
+    await admin.save();
+
+    res.json({
+      success: true,
+      message: '2FA enabled successfully'
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// @route   POST /api/admin/2fa/disable
+// @desc    Disable 2FA
+// @access  Private (Admin)
+router.post('/2fa/disable', protect, async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide 2FA token to disable'
+      });
+    }
+
+    const admin = await Admin.findById(req.admin.id).select('+twoFactorSecret');
+
+    // Verify token
+    const verified = speakeasy.totp.verify({
+      secret: admin.twoFactorSecret,
+      encoding: 'base32',
+      token: token,
+      window: 2
+    });
+
+    if (!verified) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid 2FA code'
+      });
+    }
+
+    // Disable 2FA
+    admin.twoFactorEnabled = false;
+    admin.twoFactorSecret = undefined;
+    await admin.save();
+
+    res.json({
+      success: true,
+      message: '2FA disabled successfully'
     });
   } catch (error) {
     console.error(error);

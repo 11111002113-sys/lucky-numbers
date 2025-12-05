@@ -12,6 +12,8 @@ async function handleLogin(event) {
 
   const email = document.getElementById('email').value;
   const password = document.getElementById('password').value;
+  const token = document.getElementById('token').value;
+  const tokenGroup = document.getElementById('tokenGroup');
   const errorMessage = document.getElementById('errorMessage');
   const loginBtn = document.getElementById('loginBtn');
   const loginBtnText = document.getElementById('loginBtnText');
@@ -31,10 +33,27 @@ async function handleLogin(event) {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password, token: token || undefined })
     });
 
     const data = await response.json();
+
+    if (data.requires2FA) {
+      // Show 2FA input field
+      tokenGroup.style.display = 'block';
+      document.getElementById('token').required = true;
+      document.getElementById('token').focus();
+      
+      errorMessage.textContent = data.message || 'Please enter your 2FA code';
+      errorMessage.className = 'alert alert-warning';
+      errorMessage.style.display = 'block';
+      
+      // Re-enable button
+      loginBtn.disabled = false;
+      loginBtnText.textContent = 'Verify 2FA';
+      loginBtnSpinner.style.display = 'none';
+      return;
+    }
 
     if (data.success) {
       // Store token and admin info
@@ -54,6 +73,7 @@ async function handleLogin(event) {
   } catch (error) {
     console.error('Login error:', error);
     errorMessage.textContent = error.message || 'Invalid email or password. Please try again.';
+    errorMessage.className = 'alert alert-error';
     errorMessage.style.display = 'block';
 
     // Re-enable button

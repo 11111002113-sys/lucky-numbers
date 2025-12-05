@@ -43,6 +43,21 @@
 
     <!-- Results Container -->
     <div id="resultsContainer" style="display: none;">
+      <!-- Countdown Timers -->
+      <div class="card" style="padding: 15px; margin-bottom: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <h3 style="color: white; margin: 0 0 12px 0; font-size: 0.95rem; text-align: center;">⏰ Countdown to Results</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div style="text-align: center; padding: 10px; background: rgba(255,255,255,0.15); border-radius: 10px; backdrop-filter: blur(10px);">
+            <div style="color: rgba(255,255,255,0.9); font-size: 0.75rem; margin-bottom: 5px;">First Round</div>
+            <div id="frCountdown" style="color: white; font-size: 1.3rem; font-weight: 700; font-family: monospace;">--:--:--</div>
+          </div>
+          <div style="text-align: center; padding: 10px; background: rgba(255,255,255,0.15); border-radius: 10px; backdrop-filter: blur(10px);">
+            <div style="color: rgba(255,255,255,0.9); font-size: 0.75rem; margin-bottom: 5px;">Second Round</div>
+            <div id="srCountdown" style="color: white; font-size: 1.3rem; font-weight: 700; font-family: monospace;">--:--:--</div>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
         <h2 style="color: var(--primary-color); margin-bottom: 15px; font-size: 1.1rem; text-align: center;">Today's Results</h2>
         <div class="results-table-container">
