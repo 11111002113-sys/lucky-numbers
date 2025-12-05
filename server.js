@@ -10,8 +10,27 @@ const { apiLimiter } = require('./middleware/rateLimiter');
 const resultsRoutes = require('./routes/results');
 const adminRoutes = require('./routes/admin');
 
-// Connect to database
-connectDB();
+// Connect to database and create admin if needed
+connectDB().then(async () => {
+  // Auto-create admin user if it doesn't exist
+  const Admin = require('./models/Admin');
+  try {
+    const adminExists = await Admin.findOne({ email: process.env.ADMIN_EMAIL });
+    if (!adminExists) {
+      const admin = new Admin({
+        name: 'Admin',
+        email: process.env.ADMIN_EMAIL,
+        password: process.env.ADMIN_PASSWORD
+      });
+      await admin.save();
+      console.log('Admin user created successfully');
+    } else {
+      console.log('Admin user already exists');
+    }
+  } catch (error) {
+    console.error('Error checking/creating admin:', error.message);
+  }
+});
 
 // Initialize Express app
 const app = express();
