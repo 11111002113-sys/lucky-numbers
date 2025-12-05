@@ -4,9 +4,9 @@
 const failedAttempts = new Map();
 const blockedIPs = new Map();
 
-// Block duration in milliseconds (30 minutes)
-const BLOCK_DURATION = 30 * 60 * 1000;
-const MAX_FAILED_ATTEMPTS = 5;
+// Block duration in milliseconds (1 minute)
+const BLOCK_DURATION = 1 * 60 * 1000;
+const MAX_FAILED_ATTEMPTS = 3;
 
 // Check if IP is blocked
 function isIPBlocked(ip) {

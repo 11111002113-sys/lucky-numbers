@@ -2,11 +2,11 @@ const rateLimit = require('express-rate-limit');
 
 // Rate limiter for login attempts (STRICT)
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 3, // Only 3 attempts per 15 minutes
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 3, // Only 3 attempts per 1 minute
   message: {
     success: false,
-    message: 'Too many login attempts. Your IP has been temporarily blocked. Please try again after 15 minutes.'
+    message: 'Too many login attempts. Your IP has been temporarily blocked. Please try again after 1 minute.'
   },
   standardHeaders: true,
   legacyHeaders: false,

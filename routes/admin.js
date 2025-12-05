@@ -7,6 +7,8 @@ const { loginLimiter, adminLimiter } = require('../middleware/rateLimiter');
 const { generateToken, isValidResult, isValidTime } = require('../utils/helpers');
 const speakeasy = require('speakeasy');
 const QRCode = require('qrcode');
+const crypto = require('crypto');
+const sendEmail = require('../utils/sendEmail');
 const { 
   checkBlockedIP, 
   trackFailedLogin, 
@@ -734,6 +736,166 @@ router.post('/change-password', protect, async (req, res) => {
     });
   } catch (error) {
     console.error('Error changing password:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// @route   POST /api/admin/forgot-password
+// @desc    Request password reset
+// @access  Public
+router.post('/forgot-password', loginLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide your email'
+      });
+    }
+
+    const admin = await Admin.findOne({ email });
+
+    if (!admin) {
+      // Don't reveal if email exists or not (security)
+      return res.json({
+        success: true,
+        message: 'If that email exists, a password reset link has been sent'
+      });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    
+    // Hash token and save to database
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    admin.resetPasswordToken = hashedToken;
+    admin.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+    await admin.save();
+
+    // Create reset URL
+    const resetUrl = `${req.protocol}://${req.get('host')}/admin/reset-password.html?token=${resetToken}`;
+
+    // Email HTML
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f9fafb; border-radius: 10px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="margin: 0; font-size: 28px;">🔒 Password Reset</h1>
+          <p style="margin: 10px 0 0 0; font-size: 16px;">Lucky Numbers Admin</p>
+        </div>
+        
+        <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px;">
+          <p style="font-size: 16px; color: #374151; line-height: 1.6;">Hello Admin,</p>
+          
+          <p style="font-size: 16px; color: #374151; line-height: 1.6;">
+            You requested to reset your password. Click the button below to create a new password:
+          </p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+              Reset Password
+            </a>
+          </div>
+          
+          <p style="font-size: 14px; color: #6b7280; line-height: 1.6; border-left: 4px solid #fbbf24; padding-left: 15px; background: #fef3c7; padding: 15px;">
+            ⚠️ <strong>Security Notice:</strong> This link will expire in 10 minutes. If you didn't request this, please ignore this email.
+          </p>
+          
+          <p style="font-size: 14px; color: #9ca3af; margin-top: 20px;">
+            Or copy this link: <br>
+            <code style="background: #f3f4f6; padding: 8px; border-radius: 4px; display: inline-block; margin-top: 5px; word-break: break-all;">${resetUrl}</code>
+          </p>
+        </div>
+        
+        <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
+          <p>Lucky Numbers Admin Panel &copy; 2025</p>
+        </div>
+      </div>
+    `;
+
+    await sendEmail({
+      email: admin.email,
+      subject: 'Password Reset Request - Lucky Numbers',
+      html
+    });
+
+    console.log(`✅ Password reset email sent to ${email}`);
+
+    res.json({
+      success: true,
+      message: 'If that email exists, a password reset link has been sent'
+    });
+  } catch (error) {
+    console.error('Error in forgot password:', error);
+    
+    // Clear reset token on error
+    if (error.admin) {
+      error.admin.resetPasswordToken = undefined;
+      error.admin.resetPasswordExpire = undefined;
+      await error.admin.save();
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Email could not be sent. Please try again later.'
+    });
+  }
+});
+
+// @route   POST /api/admin/reset-password
+// @desc    Reset password using token
+// @access  Public
+router.post('/reset-password', loginLimiter, async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide token and new password'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters'
+      });
+    }
+
+    // Hash token to compare with database
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Find admin with valid token
+    const admin = await Admin.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpire: { $gt: Date.now() }
+    }).select('+resetPasswordToken +resetPasswordExpire');
+
+    if (!admin) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired reset token'
+      });
+    }
+
+    // Set new password
+    admin.password = newPassword;
+    admin.resetPasswordToken = undefined;
+    admin.resetPasswordExpire = undefined;
+    await admin.save();
+
+    console.log(`✅ Password reset successful for admin ${admin._id}`);
+
+    res.json({
+      success: true,
+      message: 'Password reset successful. You can now login with your new password.'
+    });
+  } catch (error) {
+    console.error('Error resetting password:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
