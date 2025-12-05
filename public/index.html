@@ -28,6 +28,9 @@
     <div class="card date-display" id="dateDisplay">
       <div class="date">Loading...</div>
       <div class="day">Please wait</div>
+      <div style="margin-top: 8px; font-size: 0.8rem; color: var(--text-secondary);">
+        Current BST Time: <span id="currentBSTTime" style="font-weight: 600; color: var(--primary-color);">--:--:--</span>
+      </div>
     </div>
 
     <!-- Loading State -->
@@ -45,15 +48,18 @@
     <div id="resultsContainer" style="display: none;">
       <!-- Countdown Timers -->
       <div class="card" style="padding: 15px; margin-bottom: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-        <h3 style="color: white; margin: 0 0 12px 0; font-size: 0.95rem; text-align: center;">⏰ Countdown to Results</h3>
+        <h3 style="color: white; margin: 0 0 5px 0; font-size: 0.95rem; text-align: center;">⏰ Countdown to Results</h3>
+        <p style="color: rgba(255,255,255,0.8); font-size: 0.7rem; text-align: center; margin: 0 0 12px 0;">Bangladesh Standard Time (BST / UTC+6)</p>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
           <div style="text-align: center; padding: 10px; background: rgba(255,255,255,0.15); border-radius: 10px; backdrop-filter: blur(10px);">
             <div style="color: rgba(255,255,255,0.9); font-size: 0.75rem; margin-bottom: 5px;">First Round</div>
             <div id="frCountdown" style="color: white; font-size: 1.3rem; font-weight: 700; font-family: monospace;">--:--:--</div>
+            <div style="color: rgba(255,255,255,0.7); font-size: 0.65rem; margin-top: 3px;" id="frTimeDisplay"></div>
           </div>
           <div style="text-align: center; padding: 10px; background: rgba(255,255,255,0.15); border-radius: 10px; backdrop-filter: blur(10px);">
             <div style="color: rgba(255,255,255,0.9); font-size: 0.75rem; margin-bottom: 5px;">Second Round</div>
             <div id="srCountdown" style="color: white; font-size: 1.3rem; font-weight: 700; font-family: monospace;">--:--:--</div>
+            <div style="color: rgba(255,255,255,0.7); font-size: 0.65rem; margin-top: 3px;" id="srTimeDisplay"></div>
           </div>
         </div>
       </div>

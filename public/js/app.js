@@ -21,9 +21,22 @@ const displayFrTime = document.getElementById('displayFrTime');
 const displaySrTime = document.getElementById('displaySrTime');
 const frCountdown = document.getElementById('frCountdown');
 const srCountdown = document.getElementById('srCountdown');
+const frTimeDisplay = document.getElementById('frTimeDisplay');
+const srTimeDisplay = document.getElementById('srTimeDisplay');
 
 // Countdown timers
 let countdownInterval;
+
+// Convert time to BST (UTC+6)
+function toBST(date) {
+  const utc = date.getTime() + (date.getTimezoneOffset() * 60000);
+  return new Date(utc + (6 * 3600000)); // BST is UTC+6
+}
+
+// Get current BST time
+function getBSTNow() {
+  return toBST(new Date());
+}
 
 function updateCountdown(targetTime, element, isCompleted) {
   if (isCompleted) {
@@ -32,11 +45,13 @@ function updateCountdown(targetTime, element, isCompleted) {
     return;
   }
 
-  const now = new Date();
-  const today = now.toISOString().split('T')[0];
+  const bstNow = getBSTNow();
+  const today = bstNow.toISOString().split('T')[0];
+  
+  // Create target datetime in BST
   const targetDateTime = new Date(`${today}T${targetTime}`);
   
-  const diff = targetDateTime - now;
+  const diff = targetDateTime - bstNow;
   
   if (diff <= 0) {
     element.textContent = 'Time Passed';
@@ -81,13 +96,13 @@ function formatDay(dateString) {
   return date.toLocaleDateString('en-US', options);
 }
 
-// Format time (24h to 12h)
+// Format time (24h to 12h) with BST label
 function formatTime(time24) {
   const [hours, minutes] = time24.split(':');
   const hour = parseInt(hours);
   const ampm = hour >= 12 ? 'PM' : 'AM';
   const hour12 = hour % 12 || 12;
-  return `${hour12}:${minutes} ${ampm}`;
+  return `${hour12}:${minutes} ${ampm} BST`;
 }
 
 // Format updated time
@@ -114,6 +129,10 @@ function updateUI(data) {
   srTime.textContent = formatTime(data.sr_time);
   displayFrTime.textContent = formatTime(data.fr_time);
   displaySrTime.textContent = formatTime(data.sr_time);
+  
+  // Update countdown time displays
+  if (frTimeDisplay) frTimeDisplay.textContent = `at ${formatTime(data.fr_time)}`;
+  if (srTimeDisplay) srTimeDisplay.textContent = `at ${formatTime(data.sr_time)}`;
 
   // Start countdown timers
   const frDeclared = (data.fr_result !== null && data.fr_result !== undefined);
@@ -156,6 +175,25 @@ function updateUI(data) {
   errorState.style.display = 'none';
   resultsContainer.style.display = 'block';
 }
+
+// Update current BST time display
+function updateBSTClock() {
+  const currentBSTTimeEl = document.getElementById('currentBSTTime');
+  if (!currentBSTTimeEl) return;
+  
+  const bstNow = getBSTNow();
+  const hours = bstNow.getHours();
+  const minutes = bstNow.getMinutes();
+  const seconds = bstNow.getSeconds();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const hour12 = hours % 12 || 12;
+  
+  currentBSTTimeEl.textContent = `${String(hour12).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${ampm}`;
+}
+
+// Start BST clock
+setInterval(updateBSTClock, 1000);
+updateBSTClock();
 
 // Fetch today's results
 async function fetchTodayResults() {
