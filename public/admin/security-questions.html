@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Questions Setup - Lucky Numbers Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px;">
+    <div class="card" style="max-width: 550px; width: 100%; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="color: var(--primary-color); font-size: 2rem; margin-bottom: 10px;">🔐 Setup Security Questions</h1>
+        <p style="color: var(--text-secondary); font-size: 0.95rem;">Answer these questions to recover your password later</p>
+      </div>
+
+      <!-- Success Message -->
+      <div id="successMessage" class="alert alert-success" style="display: none;"></div>
+      
+      <!-- Error Message -->
+      <div id="errorMessage" class="alert alert-error" style="display: none;"></div>
+
+      <!-- Security Questions Form -->
+      <form id="securityForm" onsubmit="setupSecurityQuestions(event)">
+        
+        <div class="form-group">
+          <label for="question1">Security Question 1</label>
+          <select id="question1" name="question1" required>
+            <option value="">-- Select Question --</option>
+            <option value="What is your mother's maiden name?">What is your mother's maiden name?</option>
+            <option value="What was the name of your first pet?">What was the name of your first pet?</option>
+            <option value="What city were you born in?">What city were you born in?</option>
+            <option value="What is your favorite teacher's name?">What is your favorite teacher's name?</option>
+            <option value="What was your childhood nickname?">What was your childhood nickname?</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="answer1">Answer 1</label>
+          <input 
+            type="text" 
+            id="answer1" 
+            name="answer1" 
+            required 
+            minlength="2"
+            placeholder="Enter your answer"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="question2">Security Question 2</label>
+          <select id="question2" name="question2" required>
+            <option value="">-- Select Question --</option>
+            <option value="What is the name of your first school?">What is the name of your first school?</option>
+            <option value="What is your father's middle name?">What is your father's middle name?</option>
+            <option value="What was your favorite food as a child?">What was your favorite food as a child?</option>
+            <option value="What is the name of the street you grew up on?">What is the name of the street you grew up on?</option>
+            <option value="What was the make of your first car?">What was the make of your first car?</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="answer2">Answer 2</label>
+          <input 
+            type="text" 
+            id="answer2" 
+            name="answer2" 
+            required 
+            minlength="2"
+            placeholder="Enter your answer"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="question3">Security Question 3</label>
+          <select id="question3" name="question3" required>
+            <option value="">-- Select Question --</option>
+            <option value="What is your favorite book?">What is your favorite book?</option>
+            <option value="What is your favorite movie?">What is your favorite movie?</option>
+            <option value="What city would you most like to visit?">What city would you most like to visit?</option>
+            <option value="What is your dream job?">What is your dream job?</option>
+            <option value="What is your favorite color?">What is your favorite color?</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="answer3">Answer 3</label>
+          <input 
+            type="text" 
+            id="answer3" 
+            name="answer3" 
+            required 
+            minlength="2"
+            placeholder="Enter your answer"
+          >
+        </div>
+
+        <div style="padding: 15px; background: #fef3c7; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #fbbf24;">
+          <p style="margin: 0; font-size: 0.85rem; color: #92400e;">
+            <strong>⚠️ Important:</strong> Remember your answers! They are case-insensitive but must match exactly.
+          </p>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
+          <span id="btnText">Save Security Questions</span>
+          <span id="btnSpinner" class="btn-spinner" style="display: none;"></span>
+        </button>
+      </form>
+
+      <div style="text-align: center; margin-top: 20px;">
+        <a href="/admin/dashboard.html" style="color: var(--primary-color); text-decoration: none; font-size: 0.9rem;">
+          ← Back to Dashboard
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Check authentication
+    if (!localStorage.getItem('adminToken')) {
+      window.location.href = '/admin/login.html';
+    }
+
+    async function setupSecurityQuestions(e) {
+      e.preventDefault();
+      
+      const btn = document.getElementById('submitBtn');
+      const btnText = document.getElementById('btnText');
+      const btnSpinner = document.getElementById('btnSpinner');
+      const successMsg = document.getElementById('successMessage');
+      const errorMsg = document.getElementById('errorMessage');
+      
+      // Hide messages
+      successMsg.style.display = 'none';
+      errorMsg.style.display = 'none';
+      
+      // Get values
+      const data = {
+        question1: document.getElementById('question1').value,
+        answer1: document.getElementById('answer1').value,
+        question2: document.getElementById('question2').value,
+        answer2: document.getElementById('answer2').value,
+        question3: document.getElementById('question3').value,
+        answer3: document.getElementById('answer3').value
+      };
+
+      // Check for duplicate questions
+      const questions = [data.question1, data.question2, data.question3];
+      if (new Set(questions).size !== questions.length) {
+        errorMsg.textContent = '❌ Please select different questions for each security question';
+        errorMsg.style.display = 'block';
+        return;
+      }
+      
+      try {
+        btnText.style.display = 'none';
+        btnSpinner.style.display = 'inline-block';
+        btn.disabled = true;
+        
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch('/api/admin/security-questions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          successMsg.textContent = '✅ ' + result.message;
+          successMsg.style.display = 'block';
+          
+          setTimeout(() => {
+            window.location.href = '/admin/settings.html';
+          }, 2000);
+        } else {
+          throw new Error(result.message || 'Failed to save security questions');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        errorMsg.textContent = '❌ ' + (error.message || 'Failed to save security questions');
+        errorMsg.style.display = 'block';
+      } finally {
+        btnText.style.display = 'inline';
+        btnSpinner.style.display = 'none';
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

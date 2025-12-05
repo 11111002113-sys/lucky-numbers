@@ -909,4 +909,231 @@ router.post('/reset-password', loginLimiter, async (req, res) => {
   }
 });
 
+// @route   POST /api/admin/security-questions
+// @desc    Setup security questions
+// @access  Private (Admin)
+router.post('/security-questions', protect, async (req, res) => {
+  try {
+    const { question1, answer1, question2, answer2, question3, answer3 } = req.body;
+
+    if (!question1 || !answer1 || !question2 || !answer2 || !question3 || !answer3) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide all 3 security questions and answers'
+      });
+    }
+
+    const admin = await Admin.findById(req.admin.id);
+
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: 'Admin not found'
+      });
+    }
+
+    // Hash answers for security (case-insensitive)
+    const bcrypt = require('bcryptjs');
+    const salt = await bcrypt.genSalt(10);
+
+    admin.securityQuestions = [
+      {
+        question: question1,
+        answer: await bcrypt.hash(answer1.toLowerCase().trim(), salt)
+      },
+      {
+        question: question2,
+        answer: await bcrypt.hash(answer2.toLowerCase().trim(), salt)
+      },
+      {
+        question: question3,
+        answer: await bcrypt.hash(answer3.toLowerCase().trim(), salt)
+      }
+    ];
+
+    await admin.save({ validateBeforeSave: false });
+
+    console.log(`✅ Security questions set for admin ${admin._id}`);
+
+    res.json({
+      success: true,
+      message: 'Security questions saved successfully'
+    });
+  } catch (error) {
+    console.error('Error saving security questions:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// @route   POST /api/admin/verify-email-for-reset
+// @desc    Verify email and return security questions
+// @access  Public
+router.post('/verify-email-for-reset', loginLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide email'
+      });
+    }
+
+    const admin = await Admin.findOne({ email }).select('+securityQuestions');
+
+    if (!admin || !admin.securityQuestions || admin.securityQuestions.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Email not found or security questions not set up'
+      });
+    }
+
+    // Return only the questions (not answers)
+    const questions = admin.securityQuestions.map(sq => sq.question);
+
+    res.json({
+      success: true,
+      questions
+    });
+  } catch (error) {
+    console.error('Error verifying email:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// @route   POST /api/admin/verify-security-answers
+// @desc    Verify security answers
+// @access  Public
+router.post('/verify-security-answers', loginLimiter, async (req, res) => {
+  const clientIP = getClientIP(req);
+  
+  try {
+    const { email, answers } = req.body;
+
+    if (!email || !answers || answers.length !== 3) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide email and all 3 answers'
+      });
+    }
+
+    const admin = await Admin.findOne({ email }).select('+securityQuestions');
+
+    if (!admin || !admin.securityQuestions || admin.securityQuestions.length !== 3) {
+      trackFailedLogin(clientIP);
+      return res.status(404).json({
+        success: false,
+        message: 'Invalid request'
+      });
+    }
+
+    // Verify all answers
+    const bcrypt = require('bcryptjs');
+    const allCorrect = await Promise.all(
+      answers.map(async (answer, index) => {
+        return await bcrypt.compare(
+          answer.toLowerCase().trim(),
+          admin.securityQuestions[index].answer
+        );
+      })
+    );
+
+    if (!allCorrect.every(result => result === true)) {
+      trackFailedLogin(clientIP);
+      console.warn(`❌ Failed security questions from IP ${clientIP} for ${email}`);
+      return res.status(401).json({
+        success: false,
+        message: 'Incorrect answers. Please try again.'
+      });
+    }
+
+    // Answers verified - generate temporary token
+    const tempToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(tempToken).digest('hex');
+    
+    admin.resetPasswordToken = hashedToken;
+    admin.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+    await admin.save({ validateBeforeSave: false });
+
+    resetFailedAttempts(clientIP);
+    console.log(`✅ Security questions verified from IP ${clientIP} for ${email}`);
+
+    res.json({
+      success: true,
+      token: tempToken,
+      message: 'Answers verified'
+    });
+  } catch (error) {
+    console.error('Error verifying answers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// @route   POST /api/admin/reset-password-with-questions
+// @desc    Reset password using security questions
+// @access  Public
+router.post('/reset-password-with-questions', loginLimiter, async (req, res) => {
+  try {
+    const { email, token, newPassword } = req.body;
+
+    if (!email || !token || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide all required fields'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters'
+      });
+    }
+
+    // Hash token to compare
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    const admin = await Admin.findOne({
+      email,
+      resetPasswordToken: hashedToken,
+      resetPasswordExpire: { $gt: Date.now() }
+    }).select('+resetPasswordToken +resetPasswordExpire');
+
+    if (!admin) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired verification. Please try again.'
+      });
+    }
+
+    // Update password
+    admin.password = newPassword;
+    admin.resetPasswordToken = undefined;
+    admin.resetPasswordExpire = undefined;
+    await admin.save();
+
+    console.log(`✅ Password reset via security questions for admin ${admin._id}`);
+
+    res.json({
+      success: true,
+      message: 'Password reset successful! You can now login with your new password.'
+    });
+  } catch (error) {
+    console.error('Error resetting password:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
 module.exports = router;

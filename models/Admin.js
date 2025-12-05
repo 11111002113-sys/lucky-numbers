@@ -36,6 +36,16 @@ const adminSchema = new mongoose.Schema({
     type: Date,
     select: false
   },
+  securityQuestions: [{
+    question: {
+      type: String,
+      select: false
+    },
+    answer: {
+      type: String,
+      select: false
+    }
+  }],
   role: {
     type: String,
     default: 'admin'

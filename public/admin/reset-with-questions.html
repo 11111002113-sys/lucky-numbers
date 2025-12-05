@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Password - Security Questions</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px;">
+    <div class="card" style="max-width: 550px; width: 100%; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="color: var(--primary-color); font-size: 2rem; margin-bottom: 10px;">🔐 Reset Password</h1>
+        <p style="color: var(--text-secondary); font-size: 0.95rem;">Answer your security questions to reset password</p>
+      </div>
+
+      <!-- Success Message -->
+      <div id="successMessage" class="alert alert-success" style="display: none;"></div>
+      
+      <!-- Error Message -->
+      <div id="errorMessage" class="alert alert-error" style="display: none;"></div>
+
+      <!-- Step 1: Enter Email -->
+      <div id="step1" style="display: block;">
+        <form onsubmit="verifyEmail(event)">
+          <div class="form-group">
+            <label for="email">Admin Email</label>
+            <input 
+              type="email" 
+              id="email" 
+              name="email" 
+              required 
+              placeholder="admin@example.com"
+              autocomplete="email"
+            >
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block" id="emailBtn">
+            <span id="emailBtnText">Continue</span>
+            <span id="emailBtnSpinner" class="btn-spinner" style="display: none;"></span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Step 2: Answer Security Questions -->
+      <div id="step2" style="display: none;">
+        <form onsubmit="verifyAnswers(event)">
+          <div id="questionsContainer"></div>
+
+          <button type="submit" class="btn btn-primary btn-block" id="answersBtn">
+            <span id="answersBtnText">Verify Answers</span>
+            <span id="answersBtnSpinner" class="btn-spinner" style="display: none;"></span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Step 3: Set New Password -->
+      <div id="step3" style="display: none;">
+        <form onsubmit="resetPassword(event)">
+          <div class="form-group">
+            <label for="newPassword">New Password</label>
+            <input 
+              type="password" 
+              id="newPassword" 
+              name="newPassword" 
+              required 
+              minlength="6"
+              placeholder="Enter new password"
+            >
+            <small style="color: var(--text-secondary); font-size: 0.85rem;">Minimum 6 characters</small>
+          </div>
+
+          <div class="form-group">
+            <label for="confirmPassword">Confirm New Password</label>
+            <input 
+              type="password" 
+              id="confirmPassword" 
+              name="confirmPassword" 
+              required 
+              minlength="6"
+              placeholder="Confirm new password"
+            >
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block" id="resetBtn">
+            <span id="resetBtnText">Reset Password</span>
+            <span id="resetBtnSpinner" class="btn-spinner" style="display: none;"></span>
+          </button>
+        </form>
+      </div>
+
+      <div style="text-align: center; margin-top: 20px;">
+        <a href="/admin/login.html" style="color: var(--primary-color); text-decoration: none; font-size: 0.9rem;">
+          ← Back to Login
+        </a>
+      </div>
+
+      <div style="margin-top: 30px; padding: 15px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #fbbf24;">
+        <p style="margin: 0; font-size: 0.85rem; color: #92400e;">
+          <strong>🔒 Secure:</strong> No email required. Answer your security questions to reset password.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let adminEmail = '';
+    let verificationToken = '';
+
+    async function verifyEmail(e) {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value;
+      adminEmail = email;
+      
+      const btn = document.getElementById('emailBtn');
+      const btnText = document.getElementById('emailBtnText');
+      const btnSpinner = document.getElementById('emailBtnSpinner');
+      const successMsg = document.getElementById('successMessage');
+      const errorMsg = document.getElementById('errorMessage');
+      
+      successMsg.style.display = 'none';
+      errorMsg.style.display = 'none';
+      
+      try {
+        btnText.style.display = 'none';
+        btnSpinner.style.display = 'inline-block';
+        btn.disabled = true;
+        
+        const response = await fetch('/api/admin/verify-email-for-reset', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          // Display security questions
+          const container = document.getElementById('questionsContainer');
+          container.innerHTML = '';
+          
+          data.questions.forEach((question, index) => {
+            const div = document.createElement('div');
+            div.className = 'form-group';
+            div.innerHTML = `
+              <label for="answer${index + 1}">${question}</label>
+              <input 
+                type="text" 
+                id="answer${index + 1}" 
+                name="answer${index + 1}" 
+                required 
+                minlength="2"
+                placeholder="Your answer"
+              >
+            `;
+            container.appendChild(div);
+          });
+          
+          document.getElementById('step1').style.display = 'none';
+          document.getElementById('step2').style.display = 'block';
+        } else {
+          throw new Error(data.message || 'Failed to verify email');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        errorMsg.textContent = '❌ ' + (error.message || 'Email not found or security questions not set up');
+        errorMsg.style.display = 'block';
+      } finally {
+        btnText.style.display = 'inline';
+        btnSpinner.style.display = 'none';
+        btn.disabled = false;
+      }
+    }
+
+    async function verifyAnswers(e) {
+      e.preventDefault();
+      
+      const btn = document.getElementById('answersBtn');
+      const btnText = document.getElementById('answersBtnText');
+      const btnSpinner = document.getElementById('answersBtnSpinner');
+      const successMsg = document.getElementById('successMessage');
+      const errorMsg = document.getElementById('errorMessage');
+      
+      successMsg.style.display = 'none';
+      errorMsg.style.display = 'none';
+      
+      const answers = [
+        document.getElementById('answer1').value,
+        document.getElementById('answer2').value,
+        document.getElementById('answer3').value
+      ];
+      
+      try {
+        btnText.style.display = 'none';
+        btnSpinner.style.display = 'inline-block';
+        btn.disabled = true;
+        
+        const response = await fetch('/api/admin/verify-security-answers', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email: adminEmail, answers })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          verificationToken = data.token;
+          successMsg.textContent = '✅ Answers verified! Now set your new password.';
+          successMsg.style.display = 'block';
+          
+          setTimeout(() => {
+            document.getElementById('step2').style.display = 'none';
+            document.getElementById('step3').style.display = 'block';
+            successMsg.style.display = 'none';
+          }, 1500);
+        } else {
+          throw new Error(data.message || 'Incorrect answers');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        errorMsg.textContent = '❌ ' + (error.message || 'Incorrect answers. Please try again.');
+        errorMsg.style.display = 'block';
+      } finally {
+        btnText.style.display = 'inline';
+        btnSpinner.style.display = 'none';
+        btn.disabled = false;
+      }
+    }
+
+    async function resetPassword(e) {
+      e.preventDefault();
+      
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      
+      const btn = document.getElementById('resetBtn');
+      const btnText = document.getElementById('resetBtnText');
+      const btnSpinner = document.getElementById('resetBtnSpinner');
+      const successMsg = document.getElementById('successMessage');
+      const errorMsg = document.getElementById('errorMessage');
+      
+      successMsg.style.display = 'none';
+      errorMsg.style.display = 'none';
+      
+      if (newPassword !== confirmPassword) {
+        errorMsg.textContent = '❌ Passwords do not match';
+        errorMsg.style.display = 'block';
+        return;
+      }
+      
+      if (newPassword.length < 6) {
+        errorMsg.textContent = '❌ Password must be at least 6 characters';
+        errorMsg.style.display = 'block';
+        return;
+      }
+      
+      try {
+        btnText.style.display = 'none';
+        btnSpinner.style.display = 'inline-block';
+        btn.disabled = true;
+        
+        const response = await fetch('/api/admin/reset-password-with-questions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ 
+            email: adminEmail, 
+            token: verificationToken,
+            newPassword 
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          successMsg.textContent = '✅ ' + data.message + ' Redirecting to login...';
+          successMsg.style.display = 'block';
+          
+          setTimeout(() => {
+            window.location.href = '/admin/login.html';
+          }, 2000);
+        } else {
+          throw new Error(data.message || 'Failed to reset password');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        errorMsg.textContent = '❌ ' + (error.message || 'Failed to reset password');
+        errorMsg.style.display = 'block';
+      } finally {
+        btnText.style.display = 'inline';
+        btnSpinner.style.display = 'none';
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
