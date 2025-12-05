@@ -573,4 +573,172 @@ router.put('/results/:date', protect, async (req, res) => {
   }
 });
 
+// @route   GET /api/admin/me
+// @desc    Get current admin info
+// @access  Private (Admin)
+router.get('/me', protect, async (req, res) => {
+  try {
+    const admin = await Admin.findById(req.admin.id);
+    
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: 'Admin not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      email: admin.email,
+      twoFactorEnabled: admin.twoFactorEnabled || false
+    });
+  } catch (error) {
+    console.error('Error fetching admin info:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// @route   POST /api/admin/change-email
+// @desc    Change admin email
+// @access  Private (Admin)
+router.post('/change-email', protect, async (req, res) => {
+  const clientIP = getClientIP(req);
+  
+  try {
+    const { newEmail, currentPassword } = req.body;
+
+    // Validate input
+    if (!newEmail || !currentPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide new email and current password'
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid email format'
+      });
+    }
+
+    // Get admin with password
+    const admin = await Admin.findById(req.admin.id).select('+password');
+
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: 'Admin not found'
+      });
+    }
+
+    // Verify current password
+    const isMatch = await admin.comparePassword(currentPassword);
+    if (!isMatch) {
+      trackFailedLogin(clientIP);
+      console.warn(`❌ Failed email change attempt from IP ${clientIP}: Invalid password`);
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect'
+      });
+    }
+
+    // Check if new email is already in use
+    const existingAdmin = await Admin.findOne({ email: newEmail });
+    if (existingAdmin && existingAdmin._id.toString() !== admin._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email already in use'
+      });
+    }
+
+    // Update email
+    admin.email = newEmail;
+    await admin.save();
+
+    console.log(`✅ Email changed successfully from IP ${clientIP} for admin ${admin._id}`);
+
+    res.json({
+      success: true,
+      message: 'Email updated successfully'
+    });
+  } catch (error) {
+    console.error('Error changing email:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// @route   POST /api/admin/change-password
+// @desc    Change admin password
+// @access  Private (Admin)
+router.post('/change-password', protect, async (req, res) => {
+  const clientIP = getClientIP(req);
+  
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    // Validate input
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide current and new password'
+      });
+    }
+
+    // Validate password length
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 6 characters'
+      });
+    }
+
+    // Get admin with password
+    const admin = await Admin.findById(req.admin.id).select('+password');
+
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: 'Admin not found'
+      });
+    }
+
+    // Verify current password
+    const isMatch = await admin.comparePassword(currentPassword);
+    if (!isMatch) {
+      trackFailedLogin(clientIP);
+      console.warn(`❌ Failed password change attempt from IP ${clientIP}: Invalid current password`);
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect'
+      });
+    }
+
+    // Update password
+    admin.password = newPassword;
+    await admin.save();
+
+    console.log(`✅ Password changed successfully from IP ${clientIP} for admin ${admin._id}`);
+
+    res.json({
+      success: true,
+      message: 'Password updated successfully'
+    });
+  } catch (error) {
+    console.error('Error changing password:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
 module.exports = router;
